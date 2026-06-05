@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  OWNER
+  ADMIN
+}
+
+enum ListingStatus {
+  ACTIVE
+  PENDING
+  REJECTED
+  FLAGGED
+}
+
+enum SubscriptionPlan {
+  FREE
+  MONTHLY
+  PREMIUM
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+}
+
+model User {
+  id             String           @id @default(cuid())
+  name           String
+  email          String           @unique
+  passwordHash   String
+  role           Role             @default(USER)
+  phone          String?
+  avatarUrl      String?
+  isVerified     Boolean          @default(false)
+  trustScore     Int              @default(60)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  listings       Listing[]
+  subscriptions  Subscription[]
+  savedListings  SavedListing[]
+  contactRequests ContactRequest[]
+  reports        Report[]
+}
+
+model Listing {
+  id           String           @id @default(cuid())
+  title        String
+  description  String
+  price        Int
+  district     String
+  address      String
+  rooms        Int
+  area         Float
+  floor        Int
+  totalFloors  Int
+  isFurnished  Boolean          @default(false)
+  petsAllowed  Boolean          @default(false)
+  status       ListingStatus    @default(PENDING)
+  trustScore   Int              @default(70)
+  ownerId      String
+  owner        User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  photos       Photo[]
+  amenities    ListingAmenity[]
+  savedBy      SavedListing[]
+  contacts     ContactRequest[]
+  reports      Report[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([district])
+  @@index([status])
+  @@index([price])
+}
+
+model Photo {
+  id        String   @id @default(cuid())
+  url       String
+  alt       String
+  order     Int      @default(0)
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Amenity {
+  id       String           @id @default(cuid())
+  name     String           @unique
+  icon     String
+  listings ListingAmenity[]
+}
+
+model ListingAmenity {
+  listingId String
+  amenityId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  amenity   Amenity @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([listingId, amenityId])
+}
+
+model Subscription {
+  id        String           @id @default(cuid())
+  plan      SubscriptionPlan @default(FREE)
+  active    Boolean          @default(true)
+  startedAt DateTime         @default(now())
+  endsAt    DateTime?
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, active])
+}
+
+model SavedListing {
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+}
+
+model ContactRequest {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  message   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Report {
+  id        String       @id @default(cuid())
+  reason    String
+  details   String?
+  status    ReportStatus @default(OPEN)
+  userId    String
+  listingId String
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
