@@ -40,6 +40,15 @@ model Listing {
   totalFloors Int
   isFurnished Boolean          @default(false)
   petsAllowed Boolean          @default(false)
+  street       String?
+  houseNumber  String?
+  propertyType String          @default("apartment")
+  condition    String?
+  buildingType String?
+  furniture    String          @default("no")
+  minRentPeriod String?
+  childrenAllowed Boolean      @default(true)
+  contactMethods  String[]     @default(["phone"])
   status      ListingStatus    @default(PENDING)
   trustScore  Int              @default(70)
   ownerId     String

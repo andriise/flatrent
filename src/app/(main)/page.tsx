@@ -1,64 +1,106 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
+import { ListingCard } from "@/components/listings/ListingCard";
+import type { Listing } from "@/types";
+
+type ListingsResponse =
+  | { success: true; data: { listings: Listing[] } }
+  | { success: false; error: string };
 
 const stats = [
-  ["1 248", "активних оголошень"],
-  ["92%", "перевірених контактів"],
-  ["24 год", "середній час модерації"],
+  ["1 248+", "активних оголошень"],
+  ["92%", "власників без ріелторів"],
+  ["24 год", "модерація"],
 ];
 
-const steps = [
-  ["Обери район", "Фільтруй квартири у Вінниці за бюджетом, кімнатами та умовами."],
-  ["Перевір власника", "Дивись статус верифікації, рейтинг довіри та історію оголошень."],
-  ["Домовляйся напряму", "Отримуй контакт власника без комісії та зайвих дзвінків."],
-];
-
-const values = [
-  ["Без агентів", "Ми прибираємо посередників і комісії з пошуку житла."],
-  ["Перевірені власники", "Документи та контакти проходять ручну модерацію."],
-  ["Антифрод", "Система підсвічує дублікати, підозрілі ціни та скарги."],
-  ["Преміум доступ", "Більше контактів, збережені пошуки та ранній доступ."],
+const quickFilters = [
+  ["1 кімн.", "/listings?rooms=1"],
+  ["2 кімн.", "/listings?rooms=2"],
+  ["3 кімн.", "/listings?rooms=3"],
+  ["До 8 000 ₴", "/listings?maxPrice=8000"],
+  ["З тваринами", "/listings?petsAllowed=true"],
+  ["Меблі є", "/listings?furnished=true"],
 ];
 
 export default function HomePage() {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [recentListings, setRecentListings] = useState<Listing[]>([]);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem("visited")) {
+      setShowOnboarding(true);
+      localStorage.setItem("visited", "1");
+    }
+  }, []);
+
+  useEffect(() => {
+    async function loadRecentListings() {
+      const response = await fetch("/api/listings?limit=6", { cache: "no-store" });
+      const payload = (await response.json()) as ListingsResponse;
+      if (payload.success) {
+        setRecentListings(payload.data.listings);
+      }
+    }
+
+    void loadRecentListings();
+  }, []);
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    router.push(`/listings?q=${encodeURIComponent(query)}`);
+  }
+
   return (
     <main className="page">
-      <section className="container hero">
+      <section className="container hero hero--search">
         <div>
-          <div className="eyebrow">ВІННИЦЯ • БЕЗ РІЕЛТОРІВ</div>
-          <h1>Оренда напряму від власників</h1>
+          {showOnboarding ? (
+            <div className="onboarding-banner">
+              <button type="button" onClick={() => setShowOnboarding(false)} aria-label="Закрити">×</button>
+              <strong>👋 Вітаємо! Це платформа оренди без ріелторів.</strong>
+              <span>1. Оберіть район  2. Перевірте власника  3. Домовляйтесь напряму</span>
+            </div>
+          ) : null}
+          <div className="eyebrow">ВІННИЦЯ • БЕЗ РІЕЛТОРІВ • БЕЗ КОМІСІЇ</div>
+          <h1>Знайди квартиру напряму від власника</h1>
           <p>
-            FlatRent допомагає знайти квартиру у Вінниці без комісій: перевірені власники,
-            прозорі оголошення, фото, райони та швидкий контакт.
+            Пошук оренди у Вінниці з перевіреними власниками, прозорими цінами,
+            реальними фото та швидким контактом без комісії.
           </p>
-          <div className="hero-actions">
-            <Link className="btn btn--primary btn--lg" href="/listings">
-              Переглянути оголошення
-            </Link>
-            <Link className="btn btn--outline btn--lg" href="/create-listing">
-              Додати житло
-            </Link>
+          <form className="hero-search" onSubmit={onSubmit}>
+            <input
+              className="input"
+              placeholder="Район, вулиця або ключове слово..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <button className="btn btn--primary" type="submit">Знайти</button>
+          </form>
+          <div className="quick-filters">
+            {quickFilters.map(([label, href]) => (
+              <Link className="filter-pill" href={href} key={href}>{label}</Link>
+            ))}
           </div>
         </div>
-        <div className="card card--flat search-panel">
-          <form action="/listings" className="auth-form">
-            <div className="field">
-              <label className="label" htmlFor="home-query">Що шукаєте?</label>
-              <input className="input" id="home-query" name="query" placeholder="Наприклад: Вишенька, 2 кімнати" />
+        <div className="floating-preview card">
+          <div className="listing-card__photo">
+            <img src="https://picsum.photos/seed/flatrent-hero-preview/800/600" alt="Приклад квартири" />
+            <span className="badge badge--green listing-card__badge">✓ Перевірений власник</span>
+          </div>
+          <div className="listing-card__body">
+            <div className="listing-card__price">₴ 14 000 / міс</div>
+            <div className="listing-card__title">2-кімнатна квартира, 58 м², Центр</div>
+            <div className="listing-meta">
+              <span>📍 Центр</span>
+              <span>📐 58 м²</span>
+              <span>🏢 4/9 пов.</span>
             </div>
-            <div className="field-row">
-              <div className="field">
-                <label className="label" htmlFor="home-min">Бюджет від</label>
-                <input className="input" id="home-min" name="minPrice" type="number" placeholder="8000" />
-              </div>
-              <div className="field">
-                <label className="label" htmlFor="home-max">До</label>
-                <input className="input" id="home-max" name="maxPrice" type="number" placeholder="20000" />
-              </div>
-            </div>
-            <button className="btn btn--primary btn--full" type="submit">
-              Підібрати житло
-            </button>
-          </form>
+          </div>
         </div>
       </section>
 
@@ -74,25 +116,25 @@ export default function HomePage() {
       <section className="container section">
         <h2>Як це працює</h2>
         <div className="steps-grid">
-          {steps.map(([title, text], index) => (
+          {["Зареєструйся як власник", "Розміщуй оголошення безкоштовно", "Спілкуйся напряму з орендарями"].map((title, index) => (
             <div className="card info-card" key={title}>
-              <div className="step-number">{index + 1}</div>
+              <div className="step-number step-number--large">{index + 1}</div>
               <h3>{title}</h3>
-              <p className="text-muted">{text}</p>
+              <p className="text-muted">Проста модерація, зрозумілі дані та жодних прихованих комісій.</p>
             </div>
           ))}
         </div>
       </section>
 
       <section className="container section">
-        <h2>Чому FlatRent</h2>
-        <div className="value-grid">
-          {values.map(([title, text]) => (
-            <div className="card info-card" key={title}>
-              <h3>{title}</h3>
-              <p className="text-muted">{text}</p>
-            </div>
-          ))}
+        <div className="flex-between">
+          <h2>Свіжі оголошення у Вінниці</h2>
+          <Link className="btn btn--outline btn--sm" href="/listings">Всі оголошення →</Link>
+        </div>
+        <div className="listings-grid">
+          {recentListings.length > 0
+            ? recentListings.map((listing) => <ListingCard key={listing.id} listing={listing} />)
+            : Array.from({ length: 3 }, (_, index) => <div className="card skeleton" key={index} />)}
         </div>
       </section>
     </main>

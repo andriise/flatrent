@@ -1,30 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
+import { Logo } from "@/components/ui/Logo";
+
+function NavLink({ href, children, pill = false }: { href: string; children: React.ReactNode; pill?: boolean }) {
+  const pathname = usePathname();
+  const active = pathname === href || pathname.startsWith(`${href}/`);
+
+  return (
+    <Link
+      className={pill ? "nav-link nav-link--pill" : "nav-link"}
+      href={href}
+      style={active ? { borderBottom: "2px solid #1A6FD4", color: "#1A6FD4" } : undefined}
+    >
+      {children}
+    </Link>
+  );
+}
 
 export function Navbar() {
+  const pathname = usePathname();
   const { user, isPaid, logout } = useAuth();
-  const [open, setOpen] = useState(false);
+  const { theme, toggle } = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const canCreate = user?.role === "OWNER" || user?.role === "ADMIN";
+
+  useEffect(() => {
+    const handler = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   return (
     <header className="navbar">
       <div className="container navbar__inner">
-        <Link className="logo" href="/">
-          <span className="logo__mark">F</span>
-          <span>FlatRent</span>
+        <div className="logo-wrap">
+          <Logo />
           <span className="city-chip">Вінниця</span>
-        </Link>
+        </div>
 
-        <nav className="nav-links">
-          <Link href="/listings">Оголошення</Link>
-          {canCreate ? <Link href="/create-listing">+ Додати</Link> : null}
-          {user?.role === "ADMIN" ? <Link href="/admin">Адмін</Link> : null}
+        <nav className="nav-links" aria-label="Основна навігація">
+          <NavLink href="/listings">Оголошення</NavLink>
+          {canCreate ? (
+            <NavLink href="/create-listing" pill>
+              + Додати оголошення
+            </NavLink>
+          ) : null}
+          {user?.role === "ADMIN" ? <NavLink href="/admin">Адмін</NavLink> : null}
         </nav>
 
         <div className="nav-actions">
+          <button className="theme-toggle" type="button" onClick={toggle} title="Змінити тему">
+            {theme === "light" ? "🌙" : "☀️"}
+          </button>
           {user ? (
             <>
               {isPaid ? (
@@ -34,25 +75,27 @@ export function Navbar() {
                   Преміум
                 </Link>
               )}
-              <button className="avatar-button" type="button" onClick={() => setOpen((value) => !value)}>
-                {user.name.slice(0, 1).toUpperCase()}
-              </button>
-              {open ? (
-                <div className="user-menu">
-                  <Link href="/dashboard">Мій кабінет</Link>
-                  {canCreate ? <Link href="/create-listing">Додати оголошення</Link> : null}
-                  <Link href="/subscription">Підписка</Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpen(false);
-                      void logout();
-                    }}
-                  >
-                    Вийти
-                  </button>
-                </div>
-              ) : null}
+              <div ref={menuRef} className="avatar-menu-wrap">
+                <button className="avatar-button" type="button" onClick={() => setMenuOpen((value) => !value)}>
+                  {user.name.slice(0, 1).toUpperCase()}
+                </button>
+                {menuOpen ? (
+                  <div className="user-menu navbar-dropdown">
+                    <Link href="/dashboard">Мій кабінет</Link>
+                    {canCreate ? <Link href="/create-listing">Додати оголошення</Link> : null}
+                    <Link href="/subscription">Підписка</Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        void logout();
+                      }}
+                    >
+                      Вийти
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </>
           ) : (
             <>

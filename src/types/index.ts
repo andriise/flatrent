@@ -47,6 +47,15 @@ export interface Listing {
   totalFloors: number;
   isFurnished: boolean;
   petsAllowed: boolean;
+  street?: string | null;
+  houseNumber?: string | null;
+  propertyType: string;
+  condition?: string | null;
+  buildingType?: string | null;
+  furniture: string;
+  minRentPeriod?: string | null;
+  childrenAllowed: boolean;
+  contactMethods: string[];
   status: ListingStatus;
   trustScore: number;
   owner: User;
@@ -56,13 +65,18 @@ export interface Listing {
 }
 
 export interface SearchFilters {
-  query?: string;
+  q?: string;
   district?: string;
   minPrice?: number;
   maxPrice?: number;
   rooms?: number;
+  minArea?: number;
   furnished?: boolean;
   petsAllowed?: boolean;
+  verifiedOnly?: boolean;
+  balcony?: boolean;
+  notFirstFloor?: boolean;
+  notLastFloor?: boolean;
 }
 
 export const DISTRICTS = [
